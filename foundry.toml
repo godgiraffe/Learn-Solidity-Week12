@@ -3,4 +3,11 @@ src = "src"
 out = "out"
 libs = ["lib"]
 
+[rpc_endpoints]
+sepolia = "${https://eth-sepolia.g.alchemy.com/v2/7cmNHYY-Hgj-ZINXkkOMNFhM7bJNBosL}"
+
+
+[etherscan]
+sepolia = { key = "${3R13I174A1GRUUJBSAC1AK4X33EM7TEB46}"}
+
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

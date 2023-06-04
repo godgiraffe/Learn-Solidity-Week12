@@ -6,3 +6,6 @@
 	url = https://github.com/compound-finance/compound-protocol
 [submodule "lib\\compound-protocol"]
 	branch = master
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts
