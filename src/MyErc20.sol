@@ -5,12 +5,12 @@ import {ERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol"
 
 contract MyErc20 is ERC20 {
     // 因為父合約中沒有紀錄 _decimals, 所以在子合約中紀錄
-    uint256 private _decimals;
+    uint8 private _decimals;
 
     constructor(
         string memory name,
         string memory symbol,
-        uint8 calldata decimals
+        uint8 decimals
     ) ERC20(name, symbol) { // 這邊等於做了 ERC20 的 constructor
         _decimals = decimals;
     }
