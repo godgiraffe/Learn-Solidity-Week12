@@ -228,7 +228,7 @@ contract CompoundTest is Test {
      */
     function testCollateralLiquidation() public {
         borrowEnvSetUp();
-        uint closeFactorMantissa = 90 * 10 ** _decimals / 100; // 清算時，最多能清算幾成 50%
+        uint closeFactorMantissa = 90 * 10 ** _decimals / 100; // 清算時，最多能清算幾成 90%
         uint liquidationIncentiveMantissa = 108 * 10 ** _decimals / 100; // 清算獎勵 108%
         uint liquidity;
         uint shortfall;
@@ -277,11 +277,42 @@ contract CompoundTest is Test {
      */
      function testPriceLiquidation() public {
         borrowEnvSetUp();
-        uint closeFactorMantissa; // 清算時，最多能清算幾成
-        uint liquidationIncentiveMantissa; // 清算獎勵
+        uint closeFactorMantissa = 90 * 10 ** _decimals / 100; // 清算時，最多能清算幾成 90%
+        uint liquidationIncentiveMantissa = 108 * 10 ** _decimals / 100; // 清算獎勵 108%
+        uint priceTokenB = 1; // token B 的價格為 $1
 
         vm.startPrank(_admin);
+        _comptroller._setCloseFactor(closeFactorMantissa);
+        _comptroller._setLiquidationIncentive(liquidationIncentiveMantissa);
 
+        _priceOracle.setUnderlyingPrice(CToken(address(_cTokenB)), priceTokenB);
+        assertEq(
+            _priceOracle.getUnderlyingPrice(CToken(address(_cTokenB))),
+            priceTokenB
+        );
+        vm.stopPrank();
+        // ===============================================================================
+        vm.startPrank(_user2);
+
+        (,  , uint shortfall) = _comptroller.getAccountLiquidity(_user1);
+        assertGt(shortfall, 0); // shortfall > 0, 表示 user1 可以被清算
+
+
+
+        // 清算時，最多能還多少資產
+        closeFactorMantissa = _comptroller.closeFactorMantissa();
+        uint repayAmount = (_cTokenA.borrowBalanceCurrent(_user1) * closeFactorMantissa / 1e18) / 1e18;
+
+
+        // 準備 TokenA 來還錢
+        _underlyingA.mint(repayAmount);
+
+        uint user2HoldCTokenB_Amount = _cTokenB.balanceOf(_user2);
+        _underlyingA.approve(address(_cTokenA), repayAmount);
+        uint liquidateResponse = _cTokenA.liquidateBorrow(_user1, repayAmount, CTokenInterface(address(_cTokenB)));
+        assertEq(liquidateResponse, 0);
+
+        assertGt(_cTokenB.balanceOf(_user2), user2HoldCTokenB_Amount); // 清算完後 user2 的 cTokenB 增加
         vm.stopPrank();
      }
     //////////////////////////////////
