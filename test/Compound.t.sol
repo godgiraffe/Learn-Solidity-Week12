@@ -11,6 +11,7 @@ import {ComptrollerInterface} from "lib/compound-protocol/contracts/ComptrollerI
 
 import {SimplePriceOracle} from "lib/compound-protocol/contracts/SimplePriceOracle.sol";
 import {CToken} from "lib/compound-protocol/contracts/CToken.sol";
+import {CTokenInterface} from "lib/compound-protocol/contracts/CTokenInterfaces.sol";
 
 import {WhitePaperInterestRateModel} from "lib/compound-protocol/contracts/WhitePaperInterestRateModel.sol";
 import {CErc20Delegator} from "lib/compound-protocol/contracts/CErc20Delegator.sol"; // proxy
@@ -68,7 +69,10 @@ contract CompoundTest is Test {
             "0x0",
             _priceOracle
         );
-        require(_comptroller._supportMarket(CToken(address(_cTokenA))) == 0, "add cTokenA to market, got error");
+        require(
+            _comptroller._supportMarket(CToken(address(_cTokenA))) == 0,
+            "add cTokenA to market, got error"
+        );
         // CToken[] memory tokens = new CToken[](1);
         // tokens[0] = CToken(address(_cTokenA));
         // uint[] memory borrowCaps = new uint[](1);
@@ -116,7 +120,7 @@ contract CompoundTest is Test {
      *    - [x] User1 使用 token B 作為抵押品來借出 50 顆 token A
      */
     function testBorrow() public {
-      borrowEnvSetUp();
+        borrowEnvSetUp();
     }
 
     function borrowEnvSetUp() public {
@@ -141,29 +145,37 @@ contract CompoundTest is Test {
         );
 
         // 2. list cTokenB to market
-        uint addMarketResponse = _comptroller._supportMarket(CToken(address(_cTokenB)));
+        uint addMarketResponse = _comptroller._supportMarket(
+            CToken(address(_cTokenB))
+        );
         assertEq(addMarketResponse, 0);
 
         // - [x] 在 Oracle 中設定一顆 token A 的價格為 $1，一顆 token B 的價格為 $100
         _priceOracle.setUnderlyingPrice(CToken(address(_cTokenA)), priceTokenA);
         _priceOracle.setUnderlyingPrice(CToken(address(_cTokenB)), priceTokenB);
-        assertEq(_priceOracle.getUnderlyingPrice(CToken(address(_cTokenA))), priceTokenA);
-        assertEq(_priceOracle.getUnderlyingPrice(CToken(address(_cTokenB))), priceTokenB);
-
+        assertEq(
+            _priceOracle.getUnderlyingPrice(CToken(address(_cTokenA))),
+            priceTokenA
+        );
+        assertEq(
+            _priceOracle.getUnderlyingPrice(CToken(address(_cTokenB))),
+            priceTokenB
+        );
 
         // - [x] 設定 Token B 的 collateral factor(抵押品能借出幾成價值) 為 50%
         // - 聽說在 solidity 的世界裡, 有乘除一起的話，一律先乘再除，避免有除不盡的奇怪問題
         // - 別的同學有使用：5e16
-        uint setCollateralFactorResponse = _comptroller._setCollateralFactor(CToken(address(_cTokenB)), 50 * 10 ** _decimals / 100);
+        uint setCollateralFactorResponse = _comptroller._setCollateralFactor(
+            CToken(address(_cTokenB)),
+            (50 * 10 ** _decimals) / 100
+        );
         assertEq(setCollateralFactorResponse, 0);
-
 
         // 放一些 token A 進去，準備給 user1 借
         _underlyingA.mint(borrowTokenA_amount * 10);
         _underlyingA.approve(address(_cTokenA), borrowTokenA_amount * 10);
         _cTokenA.mint(borrowTokenA_amount * 10);
         vm.stopPrank();
-
 
         vm.startPrank(_user1);
         // - [x] User1 使用 1 顆 token B 來 mint cToken
@@ -173,17 +185,23 @@ contract CompoundTest is Test {
         //  2. mint cToken
         uint user1HoldUnderlyingB_Amount = _underlyingB.balanceOf(_user1);
         _cTokenB.mint(depositTokenB_amount);
-        assertEq(_underlyingB.balanceOf(_user1), user1HoldUnderlyingB_Amount - depositTokenB_amount);
+        assertEq(
+            _underlyingB.balanceOf(_user1),
+            user1HoldUnderlyingB_Amount - depositTokenB_amount
+        );
 
         // - [x] User1 使用 token B 作為抵押品來借出 50 顆 token A
         //  1. user1 先將 token B enter market, 才算把 tokenB 當作抵押品
         uint user1HoldUnderlyingA_Amount = _underlyingA.balanceOf(_user1);
-        address[] memory cTokens= new address[](1);
+        address[] memory cTokens = new address[](1);
         cTokens[0] = address(_cTokenB);
         _comptroller.enterMarkets(cTokens);
         //  2. user1 來去借錢
         _cTokenA.borrow(borrowTokenA_amount);
-        assertEq(_underlyingA.balanceOf(_user1), user1HoldUnderlyingA_Amount + borrowTokenA_amount);
+        assertEq(
+            _underlyingA.balanceOf(_user1),
+            user1HoldUnderlyingA_Amount + borrowTokenA_amount
+        );
         // CErc20.sol : function borrow(uint borrowAmount) external returns (uint)
         //   CToken.sol : function borrowInternal(uint borrowAmount) internal nonReentrant
         //   CToken.sol : function borrowFresh(address payable borrower, uint borrowAmount) internal
@@ -196,7 +214,7 @@ contract CompoundTest is Test {
         將該資產加入抵押品：function enterMarkets(address[] memory cTokens) override public returns (uint[] memory)
 
         admin 能做的：
-        設定多少 %數能被清算：function _setCloseFactor(uint newCloseFactorMantissa) external returns (uint)
+        設定最多能清算幾%：function _setCloseFactor(uint newCloseFactorMantissa) external returns (uint)
         抵押品能借出幾成價值: function _setCollateralFactor(CToken cToken, uint newCollateralFactorMantissa) external returns (uint)
         設定清算獎勵：function _setLiquidationIncentive(uint newLiquidationIncentiveMantissa) external returns (uint)
         讓 cToken 上市場：function _supportMarket(CToken cToken) external returns (uint)
@@ -208,17 +226,64 @@ contract CompoundTest is Test {
      * 4. 清算
      *    - [ ] 延續 (3.) 的借貸場景，調整 token B 的 collateral factor，讓 User1 被 User2 清算
      */
+    function testCollateralLiquidation() public {
+        borrowEnvSetUp();
+        uint closeFactorMantissa = 90 * 10 ** _decimals / 100; // 清算時，最多能清算幾成 50%
+        uint liquidationIncentiveMantissa = 108 * 10 ** _decimals / 100; // 清算獎勵 108%
+        uint liquidity;
+        uint shortfall;
 
+        vm.startPrank(_admin);
+        // 設定 Token B 的 collateral factor(抵押品能借出幾成價值) 為 30%，讓 User1 能被清算
+        uint setCollateralFactorResponse = _comptroller._setCollateralFactor(
+            CToken(address(_cTokenB)),
+            (30 * 10 ** _decimals) / 100
+        );
+        assertEq(setCollateralFactorResponse, 0);
+
+        // 設定清算時，最多清算九成
+        _comptroller._setCloseFactor(closeFactorMantissa);
+        _comptroller._setLiquidationIncentive(liquidationIncentiveMantissa);
+        vm.stopPrank();
+
+        // ===============================================================================
+
+        vm.startPrank(_user2);
+
+        (, liquidity, shortfall) = _comptroller.getAccountLiquidity(_user1);
+        assertGt(shortfall, 0); // shortfall > 0, 表示 user1 可以被清算
+
+
+        // 清算時，最多能還多少資產
+        closeFactorMantissa = _comptroller.closeFactorMantissa();
+        uint repayAmount = (_cTokenA.borrowBalanceCurrent(_user1) * closeFactorMantissa) / 1e18;
+
+        // 準備 TokenA 來還錢
+        _underlyingA.mint(repayAmount);
+
+        uint user2HoldCTokenB_Amount = _cTokenB.balanceOf(_user2);
+        _underlyingA.approve(address(_cTokenA), repayAmount);
+        // CErc20.soll : function liquidateBorrow(address borrower, uint repayAmount, CTokenInterface cTokenCollateral) override external returns (uint)
+        uint liquidateResponse = _cTokenA.liquidateBorrow(_user1, repayAmount, CTokenInterface(address(_cTokenB)));
+        assertEq(liquidateResponse, 0);
+
+        assertGt(_cTokenB.balanceOf(_user2), user2HoldCTokenB_Amount); // 清算完後 user2 的 cTokenB 增加
+        vm.stopPrank();
+    }
 
     /**
      * 5. 清算
      *    - [ ] 延續 (3.) 的借貸場景，調整 oracle 中 token B 的價格，讓 User1 被 User2 清算
      */
+     function testPriceLiquidation() public {
+        borrowEnvSetUp();
+        uint closeFactorMantissa; // 清算時，最多能清算幾成
+        uint liquidationIncentiveMantissa; // 清算獎勵
 
+        vm.startPrank(_admin);
 
-
-
-
+        vm.stopPrank();
+     }
     //////////////////////////////////
     // helper functions
     //////////////////////////////////
