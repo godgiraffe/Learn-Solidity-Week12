@@ -22,11 +22,11 @@ contract ForkCompoundTest is Test {
 
       - [x] Fork Ethereum mainnet at block 17465000(https://book.getfoundry.sh/forge/fork-testing#examples)
       - [x] cERC20 的 decimals 皆為 18，初始 exchangeRate 為 1:1
-      - [ ] Close factor 設定為 50%(清算時最高清算 50%)
-      - [ ] Liquidation incentive 設為 8% (1.08 * 1e18)
-      - [ ] 設定 UNI 的 collateral factor 為 50%(借出最高 50% 價值)
+      - [x] Close factor 設定為 50%(清算時最多清算 50%)
+      - [x] Liquidation incentive 設為 8% (1.08 * 1e18)
+      - [x] 設定 UNI 的 collateral factor 為 50%(借出最高 50% 價值)
       - [ ] 使用 USDC 以及 UNI 代幣來作為 token A 以及 Token B
-      - [ ] 在 Oracle 中設定 USDC 的價格為 $1，UNI 的價格為 $5
+      - [x] 在 Oracle 中設定 USDC 的價格為 $1，UNI 的價格為 $5
       - [ ] User1 使用 1000 顆 UNI 作為抵押品借出 2500 顆 USDC
       - [ ] 將 UNI 價格改為 $4 使 User1 產生 Shortfall，並讓 User2 透過 AAVE 的 Flash loan 來借錢清算 User1
       - [ ] 可以自行檢查清算 50% 後是不是大約可以賺 63 USDC
@@ -125,10 +125,16 @@ contract ForkCompoundTest is Test {
         cUNI = deploycErc20(cUNIConfig);
         require(comptroller._supportMarket(CToken(address(cUNI))) == 0, "cUNI supportMarket failed");
 
-        // - [ ] Close factor 設定為 50%(清算時最高清算 50%)
-        // - [ ] Liquidation incentive 設為 8% (1.08 * 1e18)
-        // - [ ] 設定 UNI 的 collateral factor 為 50%(借出最高 50% 價值)
+        // Close factor 設定為 50%(清算時最多清算 50%)
+        comptroller._setCloseFactor(50 * 1e18 / 100);
+        // Liquidation incentive 設為 8% (1.08 * 1e18)
+        comptroller._setLiquidationIncentive(108 * 1e18 / 100);
+        // 設定 UNI 的 collateral factor 為 50%(借出最高 50% 價值)
+        comptroller._setCollateralFactor(CToken(address(cUNI)), 50 * 1e18 / 100);
 
+        // 在 Oracle 中設定 USDC 的價格為 $1，UNI 的價格為 $5
+        priceOracle.setUnderlyingPrice(CToken(address(cUSDC)), 1 * 10 ** (18 - 6) * 10 ** 18); // cUsdc decimals = 18, usdc decimals = 6
+        priceOracle.setUnderlyingPrice(CToken(address(cUNI)), 5 * 10 ** (18 - 18) * 10 ** 18); // cUNI decimals = 18, UNI decimals = 18
         vm.stopPrank();
     }
 
