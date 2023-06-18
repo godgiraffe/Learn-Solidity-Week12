@@ -70,6 +70,7 @@ contract ForkCompoundTest is Test {
     /// Contract Address
     Unitroller public unitroller;
     Comptroller public comptroller;
+    Comptroller public proxyComptroller;
     SimplePriceOracle public priceOracle;
 
     struct CErc20Config {
@@ -98,7 +99,8 @@ contract ForkCompoundTest is Test {
         require(unitroller._setPendingImplementation(address(comptroller)) == 0, "Unitroller setPendingImplementation failed");
         // 要執行 become, 才能在 depoly cErc20 時, 將 unitroller 設為參數, 不然型態會不過的樣子, 中間就過不了了
         comptroller._become(unitroller);
-        comptroller._setPriceOracle(priceOracle);
+        proxyComptroller = Comptroller(address(unitroller));
+        proxyComptroller._setPriceOracle(priceOracle);
 
         // - [x] cERC20 的 decimals 皆為 18，初始 exchangeRate 為 1:1
         cUSDConfig = CErc20Config({
@@ -111,7 +113,7 @@ contract ForkCompoundTest is Test {
             decimals: 18
         });
         cUSDC = deploycErc20(cUSDConfig);
-        require(comptroller._supportMarket(CToken(address(cUSDC))) == 0, "cUSDC supportMarket failed");
+        require(proxyComptroller._supportMarket(CToken(address(cUSDC))) == 0, "cUSDC supportMarket failed");
 
         cUNIConfig = CErc20Config({
             underlying: UNI,
@@ -123,18 +125,18 @@ contract ForkCompoundTest is Test {
             decimals: 18
         });
         cUNI = deploycErc20(cUNIConfig);
-        require(comptroller._supportMarket(CToken(address(cUNI))) == 0, "cUNI supportMarket failed");
+        require(proxyComptroller._supportMarket(CToken(address(cUNI))) == 0, "cUNI supportMarket failed");
 
         // Close factor 設定為 50%(清算時最多清算 50%)
-        comptroller._setCloseFactor(50 * 1e18 / 100);
+        proxyComptroller._setCloseFactor(50 * 1e18 / 100);
         // Liquidation incentive 設為 8% (1.08 * 1e18)
-        comptroller._setLiquidationIncentive(108 * 1e18 / 100);
-        // 設定 UNI 的 collateral factor 為 50%(借出最高 50% 價值)
-        comptroller._setCollateralFactor(CToken(address(cUNI)), 50 * 1e18 / 100);
-
+        proxyComptroller._setLiquidationIncentive(108 * 1e18 / 100);
         // 在 Oracle 中設定 USDC 的價格為 $1，UNI 的價格為 $5
         priceOracle.setUnderlyingPrice(CToken(address(cUSDC)), 1 * 10 ** (18 - 6) * 10 ** 18); // cUsdc decimals = 18, usdc decimals = 6
         priceOracle.setUnderlyingPrice(CToken(address(cUNI)), 5 * 10 ** (18 - 18) * 10 ** 18); // cUNI decimals = 18, UNI decimals = 18
+
+        // 設定 UNI 的 collateral factor 為 50%(借出最高 50% 價值)
+        proxyComptroller._setCollateralFactor(CToken(address(cUNI)), 50 * 1e18 / 100);
         vm.stopPrank();
     }
 
