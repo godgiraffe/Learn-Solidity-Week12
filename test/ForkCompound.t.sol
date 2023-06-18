@@ -111,6 +111,7 @@ contract ForkCompoundTest is Test {
             decimals: 18
         });
         cUSDC = deploycErc20(cUSDConfig);
+        require(comptroller._supportMarket(CToken(address(cUSDC))) == 0, "cUSDC supportMarket failed");
 
         cUNIConfig = CErc20Config({
             underlying: UNI,
@@ -122,6 +123,7 @@ contract ForkCompoundTest is Test {
             decimals: 18
         });
         cUNI = deploycErc20(cUNIConfig);
+        require(comptroller._supportMarket(CToken(address(cUNI))) == 0, "cUNI supportMarket failed");
 
         // - [ ] Close factor 設定為 50%(清算時最高清算 50%)
         // - [ ] Liquidation incentive 設為 8% (1.08 * 1e18)
