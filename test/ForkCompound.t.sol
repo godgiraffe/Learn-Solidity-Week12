@@ -34,7 +34,7 @@ contract ForkCompoundTest is Test {
       - [x] User1 使用 1000 顆 UNI 作為抵押品借出 2500 顆 USDC
       - [x] 將 UNI 價格改為 $4 使 User1 產生 Shortfall，並讓 User2 透過 AAVE 的 Flash loan 來借錢清算 User1
       - [x] 可以自行檢查清算 50% 後是不是大約可以賺 63 USDC
-      - [ ] 在合約中如需將 UNI 換成 USDC 可以使用以下程式碼片段：
+      - [x] 在合約中如需將 UNI 換成 USDC 可以使用以下程式碼片段：
             ```
             // https://docs.uniswap.org/protocol/guides/swaps/single-swaps
 
@@ -206,13 +206,13 @@ contract ForkCompoundTest is Test {
         //     asset: USDC,
         //     amount: liquidationAmount,
         //     to: address(this),
-        //     params: abi.encode(_user1, address(cUSDC), liquidationAmount, address(cUSDC),_user2)
+        //     params: abi.encode(_user1, address(cUSDC), liquidationAmount, address(cUSDC),_user2)  → address liquidatedBorrower, address liquidationCToken, uint liquidationAmount, address cTokenCollateral, address liquidator
         // });
-        // address liquidatedBorrower, address liquidationCToken, uint liquidationAmount, address cTokenCollateral, address liquidator
         bytes memory params = abi.encode(_user1, address(cUSDC), liquidationAmount, address(cUNI), _user2);
         aaveFlashLoan.execute(USDC, liquidationAmount, address(this), params);
         // 6. 檢查清算 50% 後是不是大約可以賺 63 USDC
         assertGt(IERC20(USDC).balanceOf(_user2), 62 * 10 ** 6);
+        vm.stopPrank();
     }
 
 
