@@ -10,7 +10,7 @@ import {CErc20Delegator} from "lib/compound-protocol/contracts/CErc20Delegator.s
 import {CTokenInterface} from "lib/compound-protocol/contracts/CTokenInterfaces.sol";
 
 import { ISwapRouter } from '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
-import { SwapRouter } from '@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol';
+import { SwapRouter } from '@uniswap/v3-periphery/contracts/SwapRouter.sol';
 
 // TODO: Inherit IFlashLoanSimpleReceiver
 contract AaveFlashLoan is IFlashLoanSimpleReceiver {
