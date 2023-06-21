@@ -1,1 +1,4 @@
+@openzeppelin/contracts/drafts/=lib/openzeppelin-contracts/contracts/token/ERC20/extensions
 @openzeppelin/=lib/openzeppelin-contracts/
+@uniswap/v3-periphery/=lib/v3-periphery
+@uniswap/v3-core/=lib/v3-core
